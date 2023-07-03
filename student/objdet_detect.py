@@ -230,23 +230,36 @@ def detect_objects(input_bev_maps, model, configs):
         print(F"len of detection = {len(detections)}")
 
         ## step 2 : loop over all detections
-        for sample_i in range(len(detections)):
-            if detections[sample_i] is None:
-                continue
-            det = detections[sample_i]
+        for det in detections:
             print(F"det = {det}")
 
             ## step 3 : perform the conversion using the limits for x, y and z set in the configs structure
-            #for obj in det:
-                #print(F"obj = {obj}")
-            _, x, y, w, l, im, re, _ = det #obj
-            yaw = np.arctan2(im, re)
+            #           for obj in det:
+            _id, _x, _y, z, h, _w, _l, yaw = det
+            # # convert to world coordinates
+            x = _y / configs.bev_height * (configs.lim_x[1] - configs.lim_x[0])
+            y = (
+                _x / configs.bev_width * (configs.lim_y[1] - configs.lim_y[0])
+                - (configs.lim_y[1] - configs.lim_y[0]) / 2.0
+            )
+            w = _w / configs.bev_width * (configs.lim_y[1] - configs.lim_y[0])
+            l = _l / configs.bev_height * (configs.lim_x[1] - configs.lim_x[0])
 
             ## step 4 : append the current object to the 'objects' array
-            objects.append([1, x, y, 0.0, 1.50, w, l, yaw])
+            # convert to object format
+            if (
+                (x >= configs.lim_x[0])
+                and (x <= configs.lim_x[1])
+                and (y >= configs.lim_y[0])
+                and (y <= configs.lim_y[1])
+                and (z >= configs.lim_z[0])
+                and (z <= configs.lim_z[1])
+            ):
+                ## step 4 : append the current object to the 'objects' array
+                objects.append([1, x, y, z, h, w, l, yaw])
 
     #######
-    ####### ID_S3_EX2 START #######   
+    ####### ID_S3_EX2 END #######
     
     return objects    
 
