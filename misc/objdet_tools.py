@@ -198,9 +198,15 @@ def pcl_from_range_image(frame, lidar_name):
 
 # project detected bounding boxes into birds-eye view
 def project_detections_into_bev(bev_map, detections, configs, color=[]):
+
+    print(f"project_detections_into_bev: detections =  {detections}")
+
     for row in detections:
         # extract detection
+        print(f"a row = {row}")
+
         _id, _x, _y, _z, _h, _w, _l, _yaw = row
+        print(f"_id = {_id}, _x = {_x}, _y = {_y}, _z = {_z}, _h = {_h}, _w = {_w}, _l = {_l}, _yaw = {_yaw}")
 
         # convert from metric into pixel coordinates
         x = (_y - configs.lim_y[0]) / (configs.lim_y[1] - configs.lim_y[0]) * configs.bev_width
@@ -231,11 +237,10 @@ def project_detections_into_bev(bev_map, detections, configs, color=[]):
         corners_int = bev_corners.reshape(-1, 1, 2).astype(int)
         cv2.polylines(bev_map, [corners_int], True, color, 2)
 
+
         # draw colored line to identify object front
-        corners_int = bev_corners.reshape(-1, 2)
+        corners_int = bev_corners.reshape(-1, 2).astype(int)
         cv2.line(bev_map, (corners_int[0, 0], corners_int[0, 1]), (corners_int[3, 0], corners_int[3, 1]), (255, 255, 0), 2)
-
-
 
 
 ##################
@@ -379,6 +384,7 @@ def show_objects_labels_in_bev(detections, object_labels, bev_maps, configs):
 # visualize detection results as overlay in birds-eye view and ground-truth labels in camera image
 def show_objects_in_bev_labels_in_camera(detections, bev_maps, image, object_labels, object_labels_valid, camera_calibration, configs):
 
+    print("show_objects_in_bev_labels_in_camera ### ")
     # project detections into birds-eye view
     bev_map = (bev_maps.squeeze().permute(1, 2, 0).numpy() * 255).astype(np.uint8)
     bev_map = cv2.resize(bev_map, (configs.bev_width, configs.bev_height))
