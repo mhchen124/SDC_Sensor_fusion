@@ -33,15 +33,27 @@ import misc.objdet_tools as tools
 
 # compute various performance measures to assess object detection
 def measure_detection_performance(detections, labels, labels_valid, min_iou=0.5):
-    
+    print('\n== measure_detection_performance ==')
+    print(f'detections = {detections}')
+    print(f'labels = {labels}')
+    print(f'labels_valid = {labels_valid}')
+
      # find best detection for each valid label 
     true_positives = 0 # no. of correctly detected objects
     center_devs = []
     ious = []
+    num_valid = 0
+
     for label, valid in zip(labels, labels_valid):
+
         matches_lab_det = []
+
         if valid: # exclude all labels from statistics which are not considered valid
-            
+
+            num_valid += 1
+            print(f"\n*** Found valid label ({num_valid}): ***")
+            print(f'label = {label}')
+
             # compute intersection over union (iou) and distance between centers
 
             ####### ID_S4_EX1 START #######     
@@ -49,23 +61,38 @@ def measure_detection_performance(detections, labels, labels_valid, min_iou=0.5)
             print("student task ID_S4_EX1 ")
 
             ## step 1 : extract the four corners of the current label bounding-box
-            
+            lx, ly, lz, lw, ll, _, lyaw = label
+            label_obj_corners = tools.compute_box_corners(lx, ly, lw, ll, lyaw)
+            label_obj_poly = Polygon(label_obj_corners)
+
             ## step 2 : loop over all detected objects
+            for det in detections:
 
                 ## step 3 : extract the four corners of the current detection
-                
+                _, dx, dy, dz, _, dw, dl, dyaw = det
+                det_obj_corners = tools.compute_box_corners(dx, dy, dw, dl, dyaw)
+                det_obj_poly = Polygon(det_obj_corners)
+
                 ## step 4 : computer the center distance between label and detection bounding-box in x, y, and z
-                
+                dist_x = abs(dx - lx)
+                dist_y = abs(dy - ly)
+                dist_z = abs(dz - lz)
+
                 ## step 5 : compute the intersection over union (IOU) between label and detection bounding-box
-                
+                intersection = intersection(label_obj_poly, det_obj_poly)
+                union = union(label_obj_poly, det_obj_poly)
+                iou = intersection.area / union.area
+
                 ## step 6 : if IOU exceeds min_iou threshold, store [iou,dist_x, dist_y, dist_z] in matches_lab_det and increase the TP count
-                
+                if iou > min_iou:
+                    matches_lab_det.append([iou, dist_x, dist_y, dist_z])
+
             #######
             ####### ID_S4_EX1 END #######     
             
         # find best match and compute metrics
         if matches_lab_det:
-            best_match = max(matches_lab_det,key=itemgetter(1)) # retrieve entry with max iou in case of multiple candidates   
+            best_match = max(matches_lab_det, key=itemgetter(1)) # retrieve entry with max iou in case of multiple candidates
             ious.append(best_match[0])
             center_devs.append(best_match[1:])
 

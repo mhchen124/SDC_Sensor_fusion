@@ -31,7 +31,6 @@ from tools.waymo_reader.simple_waymo_open_dataset_reader import utils as waymo_u
 from tools.waymo_reader.simple_waymo_open_dataset_reader import WaymoDataFileReader, dataset_pb2, label_pb2
 
 
-
 ##################
 # LIDAR
 
@@ -191,8 +190,6 @@ def pcl_from_range_image(frame, lidar_name):
     return points_all
 
 
-
-
 ##################
 # BIRDS-EYE VIEW
 
@@ -275,8 +272,7 @@ def validate_object_labels(object_labels, pcl, configs, min_num_points):
         ## ... flagged as "difficult to detect" or not of type "vehicle" 
         if(label.detection_difficulty_level > 0 or label.type != label_pb2.Label.Type.TYPE_VEHICLE):
             valid_flags[index] = False
-        
-    
+
     return valid_flags
 
 
