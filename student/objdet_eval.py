@@ -17,6 +17,7 @@ matplotlib.use('wxagg') # change backend so that figure maximizing works on Mac 
 import matplotlib.pyplot as plt
 
 import torch
+import shapely
 from shapely.geometry import Polygon
 from operator import itemgetter
 
@@ -30,6 +31,12 @@ sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 # object detection tools and helper functions
 import misc.objdet_tools as tools
 
+def get_num_vehicles(labels):
+    num_veh = 0
+    for label in labels:
+        if label.type == 1:
+            num_veh += 1
+    return num_veh
 
 # compute various performance measures to assess object detection
 def measure_detection_performance(detections, labels, labels_valid, min_iou=0.5):
@@ -61,26 +68,32 @@ def measure_detection_performance(detections, labels, labels_valid, min_iou=0.5)
             print("student task ID_S4_EX1 ")
 
             ## step 1 : extract the four corners of the current label bounding-box
-            lx, ly, lz, lw, ll, _, lyaw = label
-            label_obj_corners = tools.compute_box_corners(lx, ly, lw, ll, lyaw)
-            label_obj_poly = Polygon(label_obj_corners)
+            label_box = tools.compute_box_corners(
+                label.box.center_x,
+                label.box.center_y,
+                label.box.width,
+                label.box.length,
+                label.box.heading,
+            )
+
+            label_pol = Polygon(label_box)
 
             ## step 2 : loop over all detected objects
             for det in detections:
 
                 ## step 3 : extract the four corners of the current detection
-                _, dx, dy, dz, _, dw, dl, dyaw = det
-                det_obj_corners = tools.compute_box_corners(dx, dy, dw, dl, dyaw)
-                det_obj_poly = Polygon(det_obj_corners)
+                _, x, y, z, h, w, l, yaw = det
+                det_box = tools.compute_box_corners(x, y, w, l, yaw)
+                det_pol = Polygon(det_box)
 
                 ## step 4 : computer the center distance between label and detection bounding-box in x, y, and z
-                dist_x = abs(dx - lx)
-                dist_y = abs(dy - ly)
-                dist_z = abs(dz - lz)
+                dist_x = np.array(label.box.center_x - x).item()
+                dist_y = np.array(label.box.center_y - y).item()
+                dist_z = np.array(label.box.center_z - z).item()
 
                 ## step 5 : compute the intersection over union (IOU) between label and detection bounding-box
-                intersection = intersection(label_obj_poly, det_obj_poly)
-                union = union(label_obj_poly, det_obj_poly)
+                intersection = shapely.intersection(label_pol, det_pol)
+                union = shapely.union(label_pol, det_pol)
                 iou = intersection.area / union.area
 
                 ## step 6 : if IOU exceeds min_iou threshold, store [iou,dist_x, dist_y, dist_z] in matches_lab_det and increase the TP count
@@ -104,13 +117,13 @@ def measure_detection_performance(detections, labels, labels_valid, min_iou=0.5)
     # compute positives and negatives for precision/recall
     
     ## step 1 : compute the total number of positives present in the scene
-    all_positives = 0
+    all_positives = len(detections)
 
     ## step 2 : compute the number of false negatives
-    false_negatives = 0
+    false_negatives = get_num_vehicles(labels) - len(matches_lab_det)
 
     ## step 3 : compute the number of false positives
-    false_positives = 0
+    false_positives = all_positives - len(matches_lab_det)
     
     #######
     ####### ID_S4_EX2 END #######     
@@ -122,13 +135,15 @@ def measure_detection_performance(detections, labels, labels_valid, min_iou=0.5)
 
 
 # evaluate object detection performance based on all frames
-def compute_performance_stats(det_performance_all):
+def compute_performance_stats(det_performance_all, configs):
 
     # extract elements
     ious = []
     center_devs = []
     pos_negs = []
+
     for item in det_performance_all:
+        print(f'item = {item}')
         ious.append(item[0])
         center_devs.append(item[1])
         pos_negs.append(item[2])
@@ -138,12 +153,23 @@ def compute_performance_stats(det_performance_all):
     print('student task ID_S4_EX3')
 
     ## step 1 : extract the total number of positives, true positives, false negatives and false positives
-    
+    TP = 0
+    TN = 0
+    FP = 0
+    FN = 0
+
+    for pos_neg in pos_negs:
+        tp, tn, fp, fn = pos_neg
+        TP += tp
+        TN += tn
+        FP += fp
+        FN += fn
+
     ## step 2 : compute precision
-    precision = 0.0
+    precision = TP / (TP + FP)
 
     ## step 3 : compute recall 
-    recall = 0.0
+    recall = TP / (TP + FN)
 
     #######    
     ####### ID_S4_EX3 END #######     
@@ -154,6 +180,7 @@ def compute_performance_stats(det_performance_all):
     devs_x_all = []
     devs_y_all = []
     devs_z_all = []
+
     for tuple in center_devs:
         for elem in tuple:
             dev_x, dev_y, dev_z = elem
@@ -177,6 +204,7 @@ def compute_performance_stats(det_performance_all):
     #std_dev_x = np.std(devs_x)
 
     # plot results
+    print('Plotting results ======> ')
     data = [precision, recall, ious_all, devs_x_all, devs_y_all, devs_z_all]
     titles = ['detection precision', 'detection recall', 'intersection over union', 'position errors in X', 'position errors in Y', 'position error in Z']
     textboxes = ['', '', '',
@@ -195,5 +223,6 @@ def compute_performance_stats(det_performance_all):
             ax.text(0.05, 0.95, textboxes[idx], transform=ax.transAxes, fontsize=10,
                     verticalalignment='top', bbox=props)
     plt.tight_layout()
+    print('About to show ***')
     plt.show()
 
