@@ -53,7 +53,7 @@ import misc.params as params
 data_filename = 'training_segment-1005081002024129653_5313_150_5333_150_with_camera_labels.tfrecord' # Sequence 1
 # data_filename = 'training_segment-10072231702153043603_5725_000_5745_000_with_camera_labels.tfrecord' # Sequence 2
 # data_filename = 'training_segment-10963653239323173269_1924_000_1944_000_with_camera_labels.tfrecord' # Sequence 3
-show_only_frames = [50, 51] # show only frames in interval for debugging
+show_only_frames = [50, 150] # show only frames in interval for debugging
 
 ## Prepare Waymo Open Dataset file for loading
 data_fullpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dataset/training/', data_filename) # adjustable path in case this script is called from another working directory
@@ -65,7 +65,7 @@ datafile_iter = iter(datafile)  # initialize dataset iterator
 configs_det = det.load_configs(model_name='darknet') # options are 'darknet', 'fpn_resnet'
 model_det = det.create_model(configs_det)
 
-configs_det.use_labels_as_objects = False # True = use groundtruth labels as objects, False = use model-based detection
+configs_det.use_labels_as_objects = True # True = use groundtruth labels as objects, False = use model-based detection
 
 ## Uncomment this setting to restrict the y-range in the final project
 # configs_det.lim_y = [-25, 25] 
@@ -163,6 +163,7 @@ while True:
             print('loading object labels and validation from result file')
             valid_label_flags = load_object_from_file(results_fullpath, data_filename, 'valid_labels', cnt_frame)            
             print(F'valid_label_flaps = {valid_label_flags}')
+
         ## Performance evaluation for object detection
         if 'measure_detection_performance' in exec_list:
             print('measuring detection performance')
@@ -175,8 +176,8 @@ while True:
             else:
                 det_performance = load_object_from_file(results_fullpath, data_filename, 'det_performance_' + configs_det.arch + '_' + str(configs_det.conf_thresh), cnt_frame)   
             print(f'det_performance = {det_performance}')
+
         det_performance_all.append(det_performance) # store all evaluation results in a list for performance assessment at the end
-        
 
         ## Visualization for object detection
         if 'show_range_image' in exec_list:
@@ -271,7 +272,6 @@ while True:
         # if StopIteration is raised, break from loop
         print("StopIteration has been raised\n")
         break
-
 
 #################################
 ## Post-processing

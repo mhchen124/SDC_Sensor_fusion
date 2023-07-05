@@ -36,7 +36,7 @@ def load_configs_model(model_name='darknet', configs=None):
 
     # init config file, if none has been passed
     if configs==None:
-        configs = edict()  
+        configs = edict()
 
     # get parent directory of this file to enable relative paths
     curr_path = os.path.dirname(os.path.realpath(__file__))
@@ -232,7 +232,6 @@ def detect_objects(input_bev_maps, model, configs):
 
         ## step 2 : loop over all detections
         for det in detections:
-            print(F"det = {det}")
 
             ## step 3 : perform the conversion using the limits for x, y and z set in the configs structure
             #           for obj in det:

@@ -13,7 +13,8 @@
 # general package imports
 import numpy as np
 import matplotlib
-matplotlib.use('wxagg') # change backend so that figure maximizing works on Mac as well     
+#matplotlib.use('wxagg') # change backend so that figure maximizing works on Mac as well
+matplotlib.use('MacOSX')
 import matplotlib.pyplot as plt
 
 import torch
@@ -31,6 +32,8 @@ sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 # object detection tools and helper functions
 import misc.objdet_tools as tools
 
+verbose = False
+
 def get_num_vehicles(labels):
     num_veh = 0
     for label in labels:
@@ -41,9 +44,10 @@ def get_num_vehicles(labels):
 # compute various performance measures to assess object detection
 def measure_detection_performance(detections, labels, labels_valid, min_iou=0.5):
     print('\n== measure_detection_performance ==')
-    print(f'detections = {detections}')
-    print(f'labels = {labels}')
-    print(f'labels_valid = {labels_valid}')
+    if verbose:
+        print(f'detections = {detections}')
+        print(f'labels = {labels}')
+        print(f'labels_valid = {labels_valid}')
 
      # find best detection for each valid label 
     true_positives = 0 # no. of correctly detected objects
@@ -57,9 +61,10 @@ def measure_detection_performance(detections, labels, labels_valid, min_iou=0.5)
 
         if valid: # exclude all labels from statistics which are not considered valid
 
-            num_valid += 1
-            print(f"\n*** Found valid label ({num_valid}): ***")
-            print(f'label = {label}')
+            if verbose:
+                num_valid += 1
+                print(f"\n*** Found valid label ({num_valid}): ***")
+                print(f'label = {label}')
 
             # compute intersection over union (iou) and distance between centers
 
@@ -118,12 +123,13 @@ def measure_detection_performance(detections, labels, labels_valid, min_iou=0.5)
     
     ## step 1 : compute the total number of positives present in the scene
     all_positives = len(detections)
+    true_positives = len(matches_lab_det)
 
     ## step 2 : compute the number of false negatives
-    false_negatives = get_num_vehicles(labels) - len(matches_lab_det)
+    false_negatives = get_num_vehicles(labels) - true_positives
 
     ## step 3 : compute the number of false positives
-    false_positives = all_positives - len(matches_lab_det)
+    false_positives = all_positives - true_positives
     
     #######
     ####### ID_S4_EX2 END #######     
@@ -180,14 +186,12 @@ def compute_performance_stats(det_performance_all, configs):
     devs_x_all = []
     devs_y_all = []
     devs_z_all = []
-
     for tuple in center_devs:
         for elem in tuple:
             dev_x, dev_y, dev_z = elem
             devs_x_all.append(dev_x)
             devs_y_all.append(dev_y)
             devs_z_all.append(dev_z)
-    
 
     # compute statistics
     stdev__ious = np.std(ious_all)
@@ -205,23 +209,30 @@ def compute_performance_stats(det_performance_all, configs):
 
     # plot results
     print('Plotting results ======> ')
+
     data = [precision, recall, ious_all, devs_x_all, devs_y_all, devs_z_all]
+
     titles = ['detection precision', 'detection recall', 'intersection over union', 'position errors in X', 'position errors in Y', 'position error in Z']
     textboxes = ['', '', '',
                  '\n'.join((r'$\mathrm{mean}=%.4f$' % (np.mean(devs_x_all), ), r'$\mathrm{sigma}=%.4f$' % (np.std(devs_x_all), ), r'$\mathrm{n}=%.0f$' % (len(devs_x_all), ))),
                  '\n'.join((r'$\mathrm{mean}=%.4f$' % (np.mean(devs_y_all), ), r'$\mathrm{sigma}=%.4f$' % (np.std(devs_y_all), ), r'$\mathrm{n}=%.0f$' % (len(devs_x_all), ))),
                  '\n'.join((r'$\mathrm{mean}=%.4f$' % (np.mean(devs_z_all), ), r'$\mathrm{sigma}=%.4f$' % (np.std(devs_z_all), ), r'$\mathrm{n}=%.0f$' % (len(devs_x_all), )))]
 
+    matplotlib.use('MacOSX')
+
     f, a = plt.subplots(2, 3)
+
     a = a.ravel()
     num_bins = 20
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+
     for idx, ax in enumerate(a):
         ax.hist(data[idx], num_bins)
         ax.set_title(titles[idx])
         if textboxes[idx]:
             ax.text(0.05, 0.95, textboxes[idx], transform=ax.transAxes, fontsize=10,
                     verticalalignment='top', bbox=props)
+
     plt.tight_layout()
     print('About to show ***')
     plt.show()
