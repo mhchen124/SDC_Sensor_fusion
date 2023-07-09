@@ -4,123 +4,139 @@ This is the project for the second course in the  [Udacity Self-Driving Car Engi
 
 In this project, you'll fuse measurements from LiDAR and camera and track vehicles over time. You will be using real-world data from the Waymo Open Dataset, detect objects in 3D point clouds and apply an extended Kalman filter for sensor fusion and tracking.
 
-<img src="img/img_title_1.jpeg"/>
-
 The project consists of two major parts: 
 1. **Object detection**: In this part, a deep-learning approach is used to detect vehicles in LiDAR data based on a birds-eye view perspective of the 3D point-cloud. Also, a series of performance measures is used to evaluate the performance of the detection approach. 
 2. **Object tracking** : In this part, an extended Kalman filter is used to track vehicles over time, based on the lidar detections fused with camera detections. Data association and track management are implemented as well.
 
-The following diagram contains an outline of the data flow and of the individual steps that make up the algorithm. 
 
-<img src="img/img_title_2_new.png"/>
+# Midterm Project: 3D Object Detection
+Code implementation can be found here in this repo: https://github.com/mhchen124/SDC_Sensor_fusion
 
-Also, the project code contains various tasks, which are detailed step-by-step in the code. More information on the algorithm and on the tasks can be found in the Udacity classroom. 
+## Section 1: Computer Lidar Point-Cloud from Range Image
+### Visualize range image channels (ID_S1_EX1)
+The required steps specified in ID_S1_EX1 has been coded in *show_range_image* inside *object_pcl.py*. 
+The lidar data and range image have been extracted for the roof-mounted lidar
+, then the range and the intensity channel were retrieved from the range image
+(negative values have been set to 0), followed by mapping the range channel onto an 8-bit scale
+and make sure that the full range of values is appropriately considered, mapping the intensity
+channel onto an 8-bit scale and normalize with the difference between the 1- and 99-percentile
+to mitigate the influence of outliers, and finally stacking up the range and intensity image 
+vertically using np.vstack and convert the result to an unsigned 8-bit integer.
 
-## Project File Structure
+The stacked image is shown here:
+![range intensity image](./pics/Range_Intensity_Image.png)
 
-📦project<br>
- ┣ 📂dataset --> contains the Waymo Open Dataset sequences <br>
- ┃<br>
- ┣ 📂misc<br>
- ┃ ┣ evaluation.py --> plot functions for tracking visualization and RMSE calculation<br>
- ┃ ┣ helpers.py --> misc. helper functions, e.g. for loading / saving binary files<br>
- ┃ ┗ objdet_tools.py --> object detection functions without student tasks<br>
- ┃ ┗ params.py --> parameter file for the tracking part<br>
- ┃ <br>
- ┣ 📂results --> binary files with pre-computed intermediate results<br>
- ┃ <br>
- ┣ 📂student <br>
- ┃ ┣ association.py --> data association logic for assigning measurements to tracks incl. student tasks <br>
- ┃ ┣ filter.py --> extended Kalman filter implementation incl. student tasks <br>
- ┃ ┣ measurements.py --> sensor and measurement classes for camera and lidar incl. student tasks <br>
- ┃ ┣ objdet_detect.py --> model-based object detection incl. student tasks <br>
- ┃ ┣ objdet_eval.py --> performance assessment for object detection incl. student tasks <br>
- ┃ ┣ objdet_pcl.py --> point-cloud functions, e.g. for birds-eye view incl. student tasks <br>
- ┃ ┗ trackmanagement.py --> track and track management classes incl. student tasks  <br>
- ┃ <br>
- ┣ 📂tools --> external tools<br>
- ┃ ┣ 📂objdet_models --> models for object detection<br>
- ┃ ┃ ┃<br>
- ┃ ┃ ┣ 📂darknet<br>
- ┃ ┃ ┃ ┣ 📂config<br>
- ┃ ┃ ┃ ┣ 📂models --> darknet / yolo model class and tools<br>
- ┃ ┃ ┃ ┣ 📂pretrained --> copy pre-trained model file here<br>
- ┃ ┃ ┃ ┃ ┗ complex_yolov4_mse_loss.pth<br>
- ┃ ┃ ┃ ┣ 📂utils --> various helper functions<br>
- ┃ ┃ ┃<br>
- ┃ ┃ ┗ 📂resnet<br>
- ┃ ┃ ┃ ┣ 📂models --> fpn_resnet model class and tools<br>
- ┃ ┃ ┃ ┣ 📂pretrained --> copy pre-trained model file here <br>
- ┃ ┃ ┃ ┃ ┗ fpn_resnet_18_epoch_300.pth <br>
- ┃ ┃ ┃ ┣ 📂utils --> various helper functions<br>
- ┃ ┃ ┃<br>
- ┃ ┗ 📂waymo_reader --> functions for light-weight loading of Waymo sequences<br>
- ┃<br>
- ┣ basic_loop.py<br>
- ┣ loop_over_dataset.py<br>
+### Visualize point-cloud (ID_S1_EX2)
+Ten point-cloud images have been selected for examination, and they are displayed below:
+
+| frame0 ![](./pics/pcl_frame0.png)      | frame20 ![](./pics/pcl_frame0.png)    |
+|----------------------------------------|---------------------------------------|
+| frame 40 ![](./pics/pcl_frame40.png)   | frame60 ![](./pics/pcl_frame60.png)   |
+| frame80 ![](./pics/pcl_frame80.png)    | frame100 ![](./pics/pcl_frame100.png) |
+| frame120 ![](./pics/pcl_frame120.png)  | frame140 ![](./pics/pcl_frame140.png) |
+| frame 160 ![](./pics/pcl_frame160.png) | frame180 ![](./pics/pcl_frame180.png) |
 
 
+#### General Observations On Point-Cloud Images
+From the above 10 pcl sample images, a few observations have been reached:
 
-## Installation Instructions for Running Locally
-### Cloning the Project
-In order to create a local copy of the project, please click on "Code" and then "Download ZIP". Alternatively, you may of-course use GitHub Desktop or Git Bash for this purpose. 
+- Overall speaking the current state of point-cloud image still have a very low resolution due to the hardware
+limitations. The objects (vehicles) in the image are still very rough in shape, blured on edges/boundaries,
+and kind hard to tell exact shape of each vehicle
+- Since it is a light-based technology, blockage by object is obvious - the object in front block an entire
+fan-shaped erea behind it
+- The backend of a vehicle appeared more clear in the images due to high intensity of the reflected laser beams?
 
-### Python
-The project has been written using Python 3.7. Please make sure that your local installation is equal or above this version. 
+## Section 2 : Create Birds-Eye View from Lidar PCL
+### Convert sensor coordinates to BEV-map coordinates (ID_S2_EX1)
+To create a BEV image from PCL, one needs to properly compute the digitization units along a specific axis.
+This includes dividing x-range/y-range by bev_image height/width, and transfer all PCL x,y coordinates into
+bev image coordinates. The computed bev image for frame0 is shown below.
 
-### Package Requirements
-All dependencies required for the project have been listed in the file `requirements.txt`. You may either install them one-by-one using pip or you can use the following command to install them all at once: 
-`pip3 install -r requirements.txt` 
+BEV image for frame0 ![](./pics/bev_frame0.png)
 
-### Waymo Open Dataset Reader
-The Waymo Open Dataset Reader is a very convenient toolbox that allows you to access sequences from the Waymo Open Dataset without the need of installing all of the heavy-weight dependencies that come along with the official toolbox. The installation instructions can be found in `tools/waymo_reader/README.md`. 
+### Compute intensity layer of the BEV map (ID_S2_EX2)
+The intensity layer was obtained by picking the max intensity value for a group of PCL points having same x and y values,
+and then normalize its value for proper visible range.
+The intensity layer for frame0 in our EX2 is shown below.
 
-### Waymo Open Dataset Files
-This project makes use of three different sequences to illustrate the concepts of object detection and tracking. These are: 
-- Sequence 1 : `training_segment-1005081002024129653_5313_150_5333_150_with_camera_labels.tfrecord`
-- Sequence 2 : `training_segment-10072231702153043603_5725_000_5745_000_with_camera_labels.tfrecord`
-- Sequence 3 : `training_segment-10963653239323173269_1924_000_1944_000_with_camera_labels.tfrecord`
+Intensity image for frame0 ![](./pics/intensity_frame0.png) 
 
-To download these files, you will have to register with Waymo Open Dataset first: [Open Dataset – Waymo](https://waymo.com/open/terms), if you have not already, making sure to note "Udacity" as your institution.
+### Compute height layer of the BEV map (ID_S2_EX3)
+The height layer was obtained by picking the max z value (the top-most one) for a group of PCL points having same x and y values,
+and then normalize its value for proper visible range.
+The intensity layer for frame0 in our EX3 is shown below.
 
-Once you have done so, please [click here](https://console.cloud.google.com/storage/browser/waymo_open_dataset_v_1_2_0_individual_files) to access the Google Cloud Container that holds all the sequences. Once you have been cleared for access by Waymo (which might take up to 48 hours), you can download the individual sequences. 
+Height image for frame0 ![](./pics/height_frame0.png)
 
-The sequences listed above can be found in the folder "training". Please download them and put the `tfrecord`-files into the `dataset` folder of this project.
+## Section 3 : Model-based Object Detection in BEV Image
+### Add a second model from a GitHub repo (ID_S3_EX1)
+In this section, a fpn_resnet model is used to detect objects in BEV image. A pre-trained ResNet18 model
+(in pkl format) was loaded in and object detection was carried out on BEV image. The detected object results
+are shown here:
+---
+`processing frame #50
+computing point-cloud from lidar range image
+computing birds-eye view from lidar pointcloud
+student task ID_S2_EX1
+lidar_pcl dim = (63745, 4)
+X len per pixel = 0.08223684210526316
+lidar_pcl_copy dim = (63745, 4)
+student task ID_S1_EX2
+student task ID_S2_EX2
+student task ID_S2_EX3
+using groundtruth labels as objects
+loading object labels and validation from result file
+valid_label_flaps = [False False False False False  True False  True False False False False
+  True False False False False]
+loading detection performance measures from file:`
 
+`det_performance = [[0.7740521801518745, 0.7862481398783719], [[-0.14378044937141965, 0.14701028073307398, -0.15474473668787136], [-0.16351952295563876, 0.10525398632566052, -0.3640736637529016]], [3, 2, 1, 0]]`
 
-### Pre-Trained Models
-The object detection methods used in this project use pre-trained models which have been provided by the original authors. They can be downloaded [here](https://drive.google.com/file/d/1Pqx7sShlqKSGmvshTYbNDcUEYyZwfn3A/view?usp=sharing) (darknet) and [here](https://drive.google.com/file/d/1RcEfUIF1pzDZco8PJkZ10OL-wLL2usEj/view?usp=sharing) (fpn_resnet). Once downloaded, please copy the model files into the paths `/tools/objdet_models/darknet/pretrained` and `/tools/objdet_models/fpn_resnet/pretrained` respectively.
+show_objects_in_bev_labels_in_camera ### 
 
-### Using Pre-Computed Results
+`project_detections_into_bev: detections =  [[1, 49.575214383670755, 4.0394287166964205, 1.0292643213596193, 1.7700000000000102, 2.0181655979315245, 4.513134775681905, -0.0006114911448493743], [1, 17.84296889851612, 3.912246984706144, 0.8291298942401681, 1.6899999999999977, 1.9384529721750436, 4.27370457474128, 0.007390584235945408], [1, 29.173896674168645, 0.7435155805960676, 0.8929607095304846, 1.9099999999999966, 2.0354414125040745, 4.307956063242486, -0.010818934012628567]]`
 
-In the main file `loop_over_dataset.py`, you can choose which steps of the algorithm should be executed. If you want to call a specific function, you simply need to add the corresponding string literal to one of the following lists: 
+`a row = [1, 49.575214383670755, 4.0394287166964205, 1.0292643213596193, 1.7700000000000102, 2.0181655979315245, 4.513134775681905, -0.0006114911448493743]
+_id = 1, _x = 49.575214383670755, _y = 4.0394287166964205, _z = 1.0292643213596193, _h = 1.7700000000000102, _w = 2.0181655979315245, _l = 4.513134775681905, _yaw = -0.0006114911448493743`
 
-- `exec_data` : controls the execution of steps related to sensor data. 
-  - `pcl_from_rangeimage` transforms the Waymo Open Data range image into a 3D point-cloud
-  - `load_image` returns the image of the front camera
+`a row = [1, 17.84296889851612, 3.912246984706144, 0.8291298942401681, 1.6899999999999977, 1.9384529721750436, 4.27370457474128, 0.007390584235945408]
+_id = 1, _x = 17.84296889851612, _y = 3.912246984706144, _z = 0.8291298942401681, _h = 1.6899999999999977, _w = 1.9384529721750436, _l = 4.27370457474128, _yaw = 0.007390584235945408`
 
-- `exec_detection` : controls which steps of model-based 3D object detection are performed
-  - `bev_from_pcl` transforms the point-cloud into a fixed-size birds-eye view perspective
-  - `detect_objects` executes the actual detection and returns a set of objects (only vehicles) 
-  - `validate_object_labels` decides which ground-truth labels should be considered (e.g. based on difficulty or visibility)
-  - `measure_detection_performance` contains methods to evaluate detection performance for a single frame
+`a row = [1, 29.173896674168645, 0.7435155805960676, 0.8929607095304846, 1.9099999999999966, 2.0354414125040745, 4.307956063242486, -0.010818934012628567]
+_id = 1, _x = 29.173896674168645, _y = 0.7435155805960676, _z = 0.8929607095304846, _h = 1.9099999999999966, _w = 2.0354414125040745, _l = 4.307956063242486, _yaw = -0.010818934012628567`
 
-In case you do not include a specific step into the list, pre-computed binary files will be loaded instead. This enables you to run the algorithm and look at the results even without having implemented anything yet. The pre-computed results for the mid-term project need to be loaded using [this](https://drive.google.com/drive/folders/1-s46dKSrtx8rrNwnObGbly2nO3i4D7r7?usp=sharing) link. Please use the folder `darknet` first. Unzip the file within and put its content into the folder `results`.
+### Extract 3D bounding boxes from model response (ID_S3_EX2)
+In this exercise the BEV image coordinates (in pixel) are transformed into vehicle coordinates (in m).
+The resulting detected object are marked (in red) on BEV image and 3d bounding boxes are imposed on the
+original image as shown below.
 
-- `exec_tracking` : controls the execution of the object tracking algorithm
+3D object detection result ![](./pics/3d object detection result.png)
 
-- `exec_visualization` : controls the visualization of results
-  - `show_range_image` displays two LiDAR range image channels (range and intensity)
-  - `show_labels_in_image` projects ground-truth boxes into the front camera image
-  - `show_objects_and_labels_in_bev` projects detected objects and label boxes into the birds-eye view
-  - `show_objects_in_bev_labels_in_camera` displays a stacked view with labels inside the camera image on top and the birds-eye view with detected objects on the bottom
-  - `show_tracks` displays the tracking results
-  - `show_detection_performance` displays the performance evaluation based on all detected 
-  - `make_tracking_movie` renders an output movie of the object tracking results
+## Section 4 : Performance Evaluation for Object Detection
+### Compute intersection-over-union between labels and detections (ID_S4_EX1)
+This exercise was carried out by looping through all detected objects, compare each object (using 4-corner
+information) with the ground-truth object. If there is an overlap, then intersection and union of the two
+and iou value was computed. If the value over the min iou threshold then a match is found.
 
-Even without solving any of the tasks, the project code can be executed. 
+The resulting data in our test case are shown here:
+<br>
+IOU
+<br>
+`[0.7740521801518745, 0.7862481398783719]`
+<br>
+center_devs
+<br>
+`[-0.14378044937141965, 0.14701028073307398, -0.15474473668787136]`
+<br>
+`[-0.16351952295563876, 0.10525398632566052, -0.3640736637529016]]`
 
-The final project uses pre-computed lidar detections in order for all students to have the same input data. If you use the workspace, the data is prepared there already. Otherwise, [download the pre-computed lidar detections](https://drive.google.com/drive/folders/1IkqFGYTF6Fh_d8J3UjQOSNJ2V42UDZpO?usp=sharing) (~1 GB), unzip them and put them in the folder `results`.
+### Compute precision and recall (ID_S4_EX3)
+The resulting plots for running over 100 frames is:
+Detection performance validation on 100-frame run ![](./pics/Performance run 50-150.png)
+<br>
+The resulting plots for running over 100 frames loading labels as objects is:
+Detection performance validation on 100-frame run ![](./pics/Performance run 50-150 load label as object.png)
 
 ## External Dependencies
 Parts of this project are based on the following repositories: 
