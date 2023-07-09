@@ -17,6 +17,7 @@ import torch
 import zlib
 import open3d as o3d
 import math
+import keyboard
 
 # add project directory to python path to enable relative imports
 import os
@@ -65,9 +66,21 @@ def show_pcl(pcl):
     pcd.points = o3d.utility.Vector3dVector(pcl)
 
     # step 4 : for the first frame, add the pcd instance to visualization using add_geometry; for all other frames, use update_geometry instead
-    # o3d.visualization.draw_geometries([pcd])
+    o3d.visualization.draw_geometries([pcd])
 
     # step 5 : visualize point cloud and keep window open until right-arrow is pressed (key-code 262)
+    # vis = o3d.visualization.Visualizer()
+    # vis.add_geometry(pcd)
+    # vis.create_window()
+    #
+    # while True:
+    #     print("running while loop ======= ")
+    #     vis.run()
+    #     if keyboard.read_key() == "q":
+    #         print("Destroying window ***")
+    #         vis.destroy_window()
+    #         vis.close()
+    #         break
 
     #######
     ####### ID_S1_EX2 END #######     
@@ -205,7 +218,7 @@ def bev_from_pcl(lidar_pcl, configs):
     ## step 5 : temporarily visualize the intensity map using OpenCV to make sure that vehicles separate well from the background
     img_intensity = intensity_map * 256
     img_intensity = img_intensity.astype(np.uint8)
-    while (0):
+    while (1):
        cv2.imshow('img_intensity', img_intensity)
        if cv2.waitKey(5000) & 0xFF == 27:
            break
@@ -236,7 +249,7 @@ def bev_from_pcl(lidar_pcl, configs):
     ## step 3 : temporarily visualize the intensity map using OpenCV to make sure that vehicles separate well from the background
     img_height = height_map * 256
     img_height = img_height.astype(np.uint8)
-    while (0):
+    while (1):
        cv2.imshow('img_height', img_height)
        if cv2.waitKey(5000) & 0xFF == 27:
            break
